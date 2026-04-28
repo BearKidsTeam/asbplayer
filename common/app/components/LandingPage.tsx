@@ -10,6 +10,8 @@ import ChromeExtension from '../services/chrome-extension';
 import { type Theme } from '@mui/material';
 import { useAppBarHeight } from '../../hooks/use-app-bar-height';
 import { VideoTabModel } from '../..';
+import { LocalMediaHistoryItem } from '../services/local-media-history';
+import RecentLocalMediaList from './RecentLocalMediaList';
 import VideoElementSelector from './VideoElementSelector';
 
 interface StylesProps {
@@ -50,10 +52,13 @@ interface Props {
     dragging: boolean;
     appBarHidden: boolean;
     videoElements: VideoTabModel[];
+    recentLocalMedia: LocalMediaHistoryItem[];
     onFileSelector: React.MouseEventHandler<HTMLAnchorElement> &
         React.MouseEventHandler<HTMLSpanElement> &
         React.MouseEventHandler<HTMLLabelElement>;
     onVideoElementSelected: (videoElement: VideoTabModel) => void;
+    onRecentLocalMediaSelected: (item: LocalMediaHistoryItem) => void;
+    onRecentLocalMediaDeleted: (id: string) => void;
 }
 
 export default function LandingPage({
@@ -64,8 +69,11 @@ export default function LandingPage({
     dragging,
     appBarHidden,
     videoElements,
+    recentLocalMedia,
     onFileSelector,
     onVideoElementSelected,
+    onRecentLocalMediaSelected,
+    onRecentLocalMediaDeleted,
 }: Props) {
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
@@ -116,6 +124,11 @@ export default function LandingPage({
                             />
                         </div>
                     )}
+                    <RecentLocalMediaList
+                        items={recentLocalMedia}
+                        onResume={onRecentLocalMediaSelected}
+                        onDelete={onRecentLocalMediaDeleted}
+                    />
                 </div>
             </Fade>
         </Paper>

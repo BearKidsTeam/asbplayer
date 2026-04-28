@@ -48,6 +48,11 @@ import { MiningContext } from '../services/mining-context';
 import { SeekTimestampCommand, WebSocketClient } from '../../web-socket-client';
 import { ensureStoragePersisted } from '../../util';
 import { resolveVideoSubtitleSplitLayout, useVideoAspectRatio } from './video-subtitle-split';
+import {
+    localMediaIdFromFile,
+    LocalMediaProgressUpdate,
+    LocalMediaSourceHandles,
+} from '../services/local-media-history';
 
 const minVideoPlayerWidth = 300;
 
@@ -107,6 +112,13 @@ export interface MediaSources {
     flattenSubtitleFiles?: boolean;
     videoFile?: File;
     videoFileUrl?: string;
+    fileHandles?: LocalMediaSourceHandles;
+}
+
+export interface LocalMediaResumeRequest {
+    mediaId: string;
+    currentTime: number;
+    token: number;
 }
 
 interface PlayerProps {
@@ -153,6 +165,8 @@ interface PlayerProps {
     hideControls?: boolean;
     forceCompressedMode?: boolean;
     webSocketClient?: WebSocketClient;
+    localMediaResumeRequest?: LocalMediaResumeRequest;
+    onLocalMediaProgress?: (progress: LocalMediaProgressUpdate) => void;
 }
 
 const Player = React.memo(function Player({
@@ -198,6 +212,8 @@ const Player = React.memo(function Player({
     hideControls,
     forceCompressedMode,
     webSocketClient,
+    localMediaResumeRequest,
+    onLocalMediaProgress,
 }: PlayerProps) {
     const [playModes, setPlayModes] = useState<Set<PlayMode>>(new Set([PlayMode.normal]));
     const playModesRef = useRef<Set<PlayMode>>(new Set([PlayMode.normal]));
@@ -253,6 +269,17 @@ const Player = React.memo(function Player({
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
     const calculateLength = () => trackLength(channelRef.current, subtitlesRef.current);
+    const emitLocalMediaProgress = useCallback(() => {
+        if (!videoFile || !onLocalMediaProgress) {
+            return;
+        }
+
+        const durationMs = trackLength(channelRef.current, subtitlesRef.current);
+        onLocalMediaProgress({
+            currentTime: clock.time(durationMs) / 1000,
+            duration: durationMs / 1000,
+        });
+    }, [clock, onLocalMediaProgress, videoFile]);
 
     useEffect(() => {
         playModesRef.current = playModes;
@@ -461,6 +488,20 @@ const Player = React.memo(function Player({
             channel.close();
         };
     }, [clock, videoPopOut, videoFile, tab, extension, videoChannelRef, onLoaded]);
+
+    useEffect(() => {
+        if (!videoFile || !onLocalMediaProgress) {
+            return;
+        }
+
+        emitLocalMediaProgress();
+        const intervalId = window.setInterval(emitLocalMediaProgress, 5000);
+
+        return () => {
+            emitLocalMediaProgress();
+            window.clearInterval(intervalId);
+        };
+    }, [emitLocalMediaProgress, onLocalMediaProgress, subtitleFiles, videoFile]);
 
     useEffect(() => {
         async function init() {
@@ -781,6 +822,39 @@ const Player = React.memo(function Player({
             }),
         [channel, clock]
     );
+    const appliedLocalMediaResumeTokenRef = useRef<number | undefined>(undefined);
+    useEffect(() => {
+        if (!channel || !videoFile || !localMediaResumeRequest) {
+            return;
+        }
+
+        if (
+            localMediaResumeRequest.mediaId !== localMediaIdFromFile(videoFile) ||
+            appliedLocalMediaResumeTokenRef.current === localMediaResumeRequest.token
+        ) {
+            return;
+        }
+
+        return channel.onReady(() => {
+            if (appliedLocalMediaResumeTokenRef.current === localMediaResumeRequest.token) {
+                return;
+            }
+
+            const duration = trackLength(channel, subtitlesRef.current) / 1000;
+            const currentTime =
+                duration > 0
+                    ? Math.min(localMediaResumeRequest.currentTime, Math.max(0, duration - 1))
+                    : localMediaResumeRequest.currentTime;
+
+            if (currentTime <= 0) {
+                return;
+            }
+
+            appliedLocalMediaResumeTokenRef.current = localMediaResumeRequest.token;
+            channel.currentTime = currentTime;
+            clock.setTime(currentTime * 1000);
+        });
+    }, [channel, clock, localMediaResumeRequest, videoFile]);
     const play = useCallback(
         (clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean) => {
             if (
@@ -805,8 +879,12 @@ const Player = React.memo(function Player({
         [channel, mediaAdapter, clock, play]
     );
     useEffect(
-        () => channel?.onPause((forwardToMedia) => pause(clock, mediaAdapter, forwardToMedia)),
-        [channel, mediaAdapter, clock]
+        () =>
+            channel?.onPause((forwardToMedia) => {
+                pause(clock, mediaAdapter, forwardToMedia);
+                emitLocalMediaProgress();
+            }),
+        [channel, mediaAdapter, clock, emitLocalMediaProgress]
     );
     useEffect(() => {
         return channel?.onOffset((offset) => applyOffset(Math.max(-calculateLength() || 0, offset), false));
@@ -874,12 +952,13 @@ const Player = React.memo(function Player({
                 const isUserInitiated = !forwardToMedia;
 
                 await seek(currentTime * 1000, clock, forwardToMedia, isUserInitiated);
+                emitLocalMediaProgress();
 
                 if (playing) {
                     clock.start();
                 }
             }),
-        [channel, clock, seek]
+        [channel, clock, seek, emitLocalMediaProgress]
     );
     useEffect(
         () =>

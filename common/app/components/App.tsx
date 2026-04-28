@@ -41,7 +41,7 @@ import ChromeExtension, { ExtensionMessage } from '../services/chrome-extension'
 import CopyHistory from './CopyHistory';
 import StatisticsDrawer from '@project/common/components/StatisticsDrawer';
 import LandingPage from './LandingPage';
-import Player, { MediaSources } from './Player';
+import Player, { LocalMediaResumeRequest, MediaSources } from './Player';
 import SettingsDialog from './SettingsDialog';
 import VideoPlayer, { SeekRequest } from './VideoPlayer';
 import { type AlertColor } from '@mui/material/Alert';
@@ -60,6 +60,13 @@ import { useAppWebSocketClient } from '../hooks/use-app-web-socket-client';
 import { LoadSubtitlesCommand } from '../../web-socket-client';
 import { ExtensionBridgedCopyHistoryRepository } from '../services/extension-bridged-copy-history-repository';
 import { IndexedDBCopyHistoryRepository } from '../../copy-history';
+import {
+    LocalFileSystemFileHandle,
+    LocalMediaHistoryItem,
+    LocalMediaHistoryRepository,
+    LocalMediaProgressUpdate,
+    WindowWithLocalFilePicker,
+} from '../services/local-media-history';
 import { isMobile } from 'react-device-detect';
 import { GlobalState } from '../../global-state';
 import mp3WorkerFactory from '../../audio-clip/mp3-encoder-worker.ts?worker';
@@ -79,6 +86,20 @@ const extensionUrl =
 const INPUT_ACCEPT_FILE_EXTENSIONS =
     '.srt,.ass,.vtt,.sup,.mp3,.m4a,.aac,.flac,.ogg,.wav,.opus,.mkv,.mp4,.avi,.m4v,.webm';
 
+const FILE_PICKER_TYPES = [
+    {
+        description: 'Media and subtitle files',
+        accept: {
+            'video/*': ['.mkv', '.mp4', '.avi', '.m4v', '.webm'],
+            'audio/*': ['.mp3', '.m4a', '.aac', '.flac', '.ogg', '.wav', '.opus', '.m4b'],
+            'text/*': ['.srt', '.ass', '.vtt', '.nfvtt'],
+            'application/json': ['.bbjson'],
+            'application/xml': ['.ytxml', '.ytsrv3', '.dfxp', '.ttml2'],
+            'application/octet-stream': ['.sup'],
+        },
+    },
+];
+
 const useContentStyles = makeStyles<Theme, ContentProps>((theme) => ({
     content: {
         flexGrow: 1,
@@ -97,13 +118,19 @@ const useContentStyles = makeStyles<Theme, ContentProps>((theme) => ({
     }),
 }));
 
-function extractSources(files: FileList | File[]): MediaSources {
+function extractSources(
+    files: FileList | File[],
+    fileHandles?: (LocalFileSystemFileHandle | undefined)[]
+): MediaSources {
     let subtitleFiles: File[] = [];
+    let subtitleFileHandles: (LocalFileSystemFileHandle | undefined)[] = [];
     let audioFile: File | undefined = undefined;
     let videoFile: File | undefined = undefined;
+    let videoFileHandle: LocalFileSystemFileHandle | undefined = undefined;
 
     for (let i = 0; i < files.length; ++i) {
         const f = files[i];
+        const fileHandle = fileHandles?.[i];
         const extensionStartIndex = f.name.lastIndexOf('.');
 
         if (extensionStartIndex === -1) {
@@ -123,6 +150,7 @@ function extractSources(files: FileList | File[]): MediaSources {
             case 'ttml2':
             case 'bbjson':
                 subtitleFiles.push(f);
+                subtitleFileHandles.push(fileHandle);
                 break;
             case 'mkv':
             case 'mp4':
@@ -133,6 +161,7 @@ function extractSources(files: FileList | File[]): MediaSources {
                     throw new LocalizedError('error.onlyOneVideoFile');
                 }
                 videoFile = f;
+                videoFileHandle = fileHandle;
                 break;
             case 'mp3':
             case 'm4a':
@@ -146,6 +175,7 @@ function extractSources(files: FileList | File[]): MediaSources {
                     throw new LocalizedError('error.onlyOneAudioFile');
                 }
                 videoFile = f;
+                videoFileHandle = fileHandle;
                 break;
             default:
                 throw new LocalizedError('error.unsupportedExtension', { extension });
@@ -156,7 +186,14 @@ function extractSources(files: FileList | File[]): MediaSources {
         throw new LocalizedError('error.bothAudioAndVideNotAllowed');
     }
 
-    return { subtitleFiles: subtitleFiles, videoFile: videoFile };
+    return {
+        subtitleFiles: subtitleFiles,
+        videoFile: videoFile,
+        fileHandles: {
+            videoFile: videoFileHandle,
+            subtitleFiles: subtitleFileHandles,
+        },
+    };
 }
 
 interface RenderVideoProps {
@@ -323,6 +360,11 @@ function App({
     } = useCopyHistory(settings.miningHistoryStorageLimit, copyHistoryRepository);
     const copyHistoryItemsRef = useRef<CopyHistoryItem[]>([]);
     copyHistoryItemsRef.current = copyHistoryItems;
+    const localMediaHistoryRepository = useMemo(() => new LocalMediaHistoryRepository(), []);
+    const [recentLocalMedia, setRecentLocalMedia] = useState<LocalMediaHistoryItem[]>([]);
+    const [localMediaResumeRequest, setLocalMediaResumeRequest] = useState<LocalMediaResumeRequest>();
+    const localMediaResumeTokenRef = useRef<number>(0);
+    const autoResumedVideoFileRef = useRef<File | undefined>(undefined);
     const [copyHistoryOpen, setCopyHistoryOpen] = useState<boolean>(false);
     const [statisticsOpen, setStatisticsOpen] = useState<boolean>(false);
     const [theaterMode, setTheaterMode] = useState<boolean>(playbackPreferences.theaterMode);
@@ -353,6 +395,8 @@ function App({
     const [lastError, setLastError] = useState<any>();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { subtitleFiles } = sources;
+
+    useEffect(() => localMediaHistoryRepository.liveFetch(6, setRecentLocalMedia), [localMediaHistoryRepository]);
 
     const handleError = useCallback(
         (message: any) => {
@@ -393,6 +437,15 @@ function App({
         },
         [t]
     );
+
+    const requestLocalMediaResume = useCallback((item: LocalMediaHistoryItem) => {
+        localMediaResumeTokenRef.current += 1;
+        setLocalMediaResumeRequest({
+            mediaId: item.id,
+            currentTime: item.currentTime,
+            token: localMediaResumeTokenRef.current,
+        });
+    }, []);
 
     const handleAnkiDialogRequest = useCallback(
         (ankiDialogItem?: CopyHistoryItem) => {
@@ -700,6 +753,9 @@ function App({
                     subtitleFiles: previous.subtitleFiles,
                     videoFile: undefined,
                     videoFileUrl: undefined,
+                    fileHandles: {
+                        subtitleFiles: previous.fileHandles?.subtitleFiles,
+                    },
                 };
             });
             setVideoFullscreen(false);
@@ -883,9 +939,17 @@ function App({
     }, []);
 
     const handleFiles = useCallback(
-        ({ files, flattenSubtitleFiles }: { files: FileList | File[]; flattenSubtitleFiles?: boolean }) => {
+        ({
+            files,
+            flattenSubtitleFiles,
+            fileHandles,
+        }: {
+            files: FileList | File[];
+            flattenSubtitleFiles?: boolean;
+            fileHandles?: (LocalFileSystemFileHandle | undefined)[];
+        }) => {
             try {
-                let { subtitleFiles, videoFile } = extractSources(files);
+                let { subtitleFiles, videoFile, fileHandles: sourceFileHandles } = extractSources(files, fileHandles);
 
                 if (videoFile || subtitleFiles.length > 0) {
                     setJumpToSubtitle(undefined);
@@ -913,6 +977,13 @@ function App({
                         subtitleFiles: subtitleFiles.length === 0 ? previous.subtitleFiles : subtitleFiles,
                         videoFile: videoFile,
                         videoFileUrl: videoFileUrl,
+                        fileHandles: {
+                            videoFile: videoFile ? sourceFileHandles?.videoFile : previous.fileHandles?.videoFile,
+                            subtitleFiles:
+                                subtitleFiles.length === 0
+                                    ? previous.fileHandles?.subtitleFiles
+                                    : sourceFileHandles?.subtitleFiles,
+                        },
                         flattenSubtitleFiles,
                     };
 
@@ -936,6 +1007,8 @@ function App({
                 if (subtitleFiles.length > 0) {
                     const subtitleFileName = subtitleFiles[0].name;
                     setFileName(subtitleFileName.substring(0, subtitleFileName.lastIndexOf('.')));
+                } else if (videoFile) {
+                    setFileName(videoFile.name.substring(0, videoFile.name.lastIndexOf('.')));
                 }
             } catch (e) {
                 console.error(e);
@@ -943,6 +1016,56 @@ function App({
             }
         },
         [handleError]
+    );
+
+    useEffect(() => {
+        if (inVideoPlayer || !sources.videoFile) {
+            return;
+        }
+
+        let cancelled = false;
+        const videoFile = sources.videoFile;
+
+        localMediaHistoryRepository
+            .recordOpenedMedia({
+                videoFile,
+                videoHandle: sources.fileHandles?.videoFile,
+                subtitleFiles: sources.subtitleFiles,
+                subtitleHandles: sources.fileHandles?.subtitleFiles,
+            })
+            .then((item) => {
+                if (cancelled || autoResumedVideoFileRef.current === videoFile || item.currentTime <= 5) {
+                    return;
+                }
+
+                autoResumedVideoFileRef.current = videoFile;
+                requestLocalMediaResume(item);
+            })
+            .catch(handleError);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [handleError, inVideoPlayer, localMediaHistoryRepository, requestLocalMediaResume, sources]);
+
+    const handleLocalMediaProgress = useCallback(
+        (progress: LocalMediaProgressUpdate) => {
+            if (!sources.videoFile) {
+                return;
+            }
+
+            void localMediaHistoryRepository
+                .savePlaybackState({
+                    videoFile: sources.videoFile,
+                    videoHandle: sources.fileHandles?.videoFile,
+                    subtitleFiles: sources.subtitleFiles,
+                    subtitleHandles: sources.fileHandles?.subtitleFiles,
+                    currentTime: progress.currentTime,
+                    duration: progress.duration,
+                })
+                .catch(console.error);
+        },
+        [localMediaHistoryRepository, sources]
     );
 
     const handleDirectory = useCallback(
@@ -1223,7 +1346,78 @@ function App({
         }
     }, [handleFiles]);
 
-    const handleFileSelector = useCallback(() => fileInputRef.current?.click(), []);
+    const handleFileSelector = useCallback(
+        (event?: React.MouseEvent<any>) => {
+            event?.preventDefault();
+
+            const showOpenFilePicker = (window as WindowWithLocalFilePicker).showOpenFilePicker;
+
+            if (!showOpenFilePicker) {
+                fileInputRef.current?.click();
+                return;
+            }
+
+            void (async () => {
+                try {
+                    const fileHandles = await showOpenFilePicker({
+                        multiple: true,
+                        types: FILE_PICKER_TYPES,
+                    });
+                    const files = await Promise.all(fileHandles.map((handle) => handle.getFile()));
+                    handleFiles({ files, fileHandles });
+                } catch (e: any) {
+                    if (e?.name === 'AbortError') {
+                        return;
+                    }
+
+                    console.warn(e);
+                    fileInputRef.current?.click();
+                }
+            })();
+        },
+        [handleFiles]
+    );
+
+    const handleRecentLocalMediaSelected = useCallback(
+        (item: LocalMediaHistoryItem) => {
+            void (async () => {
+                try {
+                    const restored = await localMediaHistoryRepository.restoreFiles(item);
+
+                    if (restored) {
+                        handleFiles({
+                            files: restored.files,
+                            fileHandles: [
+                                restored.fileHandles.videoFile,
+                                ...(restored.fileHandles.subtitleFiles ?? []),
+                            ],
+                        });
+                        requestLocalMediaResume(item);
+                        return;
+                    }
+
+                    setAlertSeverity('info');
+                    setAlert(
+                        `Select "${item.video.name}"${
+                            item.subtitles.length > 0 ? ` and ${item.subtitles.length} subtitle file(s)` : ''
+                        } to resume from ${timeDurationDisplay(item.currentTime * 1000, item.duration * 1000, false)}.`
+                    );
+                    setAlertOpen(true);
+                    handleFileSelector();
+                } catch (e) {
+                    handleError(e);
+                }
+            })();
+        },
+        [handleError, handleFileSelector, handleFiles, localMediaHistoryRepository, requestLocalMediaResume]
+    );
+
+    const handleRecentLocalMediaDeleted = useCallback(
+        (id: string) => {
+            void localMediaHistoryRepository.delete(id);
+        },
+        [localMediaHistoryRepository]
+    );
 
     const handleVideoElementSelected = useCallback(
         async (videoElement: VideoTabModel) => {
@@ -1587,8 +1781,11 @@ function App({
                                             dragging={dragging}
                                             appBarHidden={appBarHidden}
                                             videoElements={availableTabs ?? []}
+                                            recentLocalMedia={recentLocalMedia}
                                             onFileSelector={handleFileSelector}
                                             onVideoElementSelected={handleVideoElementSelected}
+                                            onRecentLocalMediaSelected={handleRecentLocalMediaSelected}
+                                            onRecentLocalMediaDeleted={handleRecentLocalMediaDeleted}
                                         />
                                     )}
                                     <DragOverlay
@@ -1653,6 +1850,8 @@ function App({
                                     miningContext={miningContext}
                                     keyBinder={keyBinder}
                                     webSocketClient={webSocketClient}
+                                    localMediaResumeRequest={localMediaResumeRequest}
+                                    onLocalMediaProgress={handleLocalMediaProgress}
                                 />
                             </Content>
                         </Paper>
