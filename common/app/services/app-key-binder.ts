@@ -29,6 +29,7 @@ export default class AppKeyBinder implements KeyBinder {
                             handlers = this.copyHandlers;
                             break;
                         case PostMineAction.showAnkiDialog:
+                        case PostMineAction.showAnkiDialogToUpdateLastCard:
                             handlers = this.ankiExportHandlers;
                             break;
                         case PostMineAction.updateLastCard:

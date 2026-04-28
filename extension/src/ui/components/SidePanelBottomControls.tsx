@@ -36,6 +36,7 @@ const SidePanelBottomControls = ({
         switch (postMineAction) {
             case PostMineAction.exportCard:
             case PostMineAction.showAnkiDialog:
+            case PostMineAction.showAnkiDialogToUpdateLastCard:
             case PostMineAction.none:
                 return t('action.mine');
             case PostMineAction.updateLastCard:

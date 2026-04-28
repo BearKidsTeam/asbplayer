@@ -241,6 +241,7 @@ export interface ScreenshotTakenMessage extends Message {
 export interface ShowAnkiUiMessage extends Message, CardModel {
     readonly command: 'show-anki-ui';
     readonly id: string;
+    readonly preferredExportMode?: AnkiExportMode;
 }
 
 export interface RecordingStartedMessage extends Message {

@@ -148,6 +148,7 @@ export interface AnkiUiState extends CardTextFieldValues {
     readonly file?: FileModel;
     readonly dialogRequestedTimestamp: number;
     readonly inTutorial: boolean;
+    readonly preferredExportMode?: AnkiExportMode;
 }
 
 export interface AnkiUiInitialState extends AnkiUiState {
@@ -265,6 +266,7 @@ export enum PostMineAction {
     showAnkiDialog = 1,
     updateLastCard = 2,
     exportCard = 3,
+    showAnkiDialogToUpdateLastCard = 4,
 }
 
 export enum PostMinePlayback {

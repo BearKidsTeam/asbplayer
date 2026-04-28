@@ -45,6 +45,7 @@
     "postMineAction": {
         "none": "아무것도 하지 않기",
         "showAnkiDialog": "Anki 익스포트 윈도우 열기",
+        "showAnkiDialogToUpdateLastCard": "Show Anki dialog to update last card",
         "updateLastCard": "이전 카드 업데이트",
         "exportCard": "Anki로 카드 보내기"
     },
@@ -88,6 +89,8 @@
         "tagList": "쉼표(,)로 구분된 텍스트 목록",
         "title": "Anki로 익스포트",
         "updateLastCard": "이전 카드 업데이트",
+        "updateLastCardTarget": "Will update Anki note {{noteId}} ({{modelName}})",
+        "updateLastCardTargetFields": "Current non-empty fields",
         "url": "URL",
         "word": "단어",
         "zoomIn": "확대",

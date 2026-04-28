@@ -45,6 +45,7 @@
     "postMineAction": {
         "none": "Tyhjä",
         "showAnkiDialog": "Näytä Anki-valintaikkuna",
+        "showAnkiDialogToUpdateLastCard": "Show Anki dialog to update last card",
         "updateLastCard": "Päivitä edellinen kortti",
         "exportCard": "Vie kortti"
     },
@@ -88,6 +89,8 @@
         "tagList": "Pilkuilla eroteltu merkkijonoluettelo",
         "title": "Anki vienti",
         "updateLastCard": "Päivitä edellinen kortti",
+        "updateLastCardTarget": "Will update Anki note {{noteId}} ({{modelName}})",
+        "updateLastCardTargetFields": "Current non-empty fields",
         "url": "URL-osoite",
         "word": "Sana",
         "zoomIn": "Lähennä",

@@ -45,6 +45,7 @@
     "postMineAction": {
         "none": "Néant",
         "showAnkiDialog": "Afficher la boîte de dialogue Anki",
+        "showAnkiDialogToUpdateLastCard": "Show Anki dialog to update last card",
         "updateLastCard": "Mettre à jour la dernière carte",
         "exportCard": "Exporter la carte"
     },
@@ -88,6 +89,8 @@
         "tagList": "Liste de chaînes séparées par des virgules",
         "title": "Export Anki",
         "updateLastCard": "Mettre à jour la dernière carte",
+        "updateLastCardTarget": "Will update Anki note {{noteId}} ({{modelName}})",
+        "updateLastCardTargetFields": "Current non-empty fields",
         "url": "URL",
         "word": "Mot",
         "zoomIn": "Zoom avant",

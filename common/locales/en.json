@@ -45,6 +45,7 @@
     "postMineAction": {
         "none": "None",
         "showAnkiDialog": "Show Anki dialog",
+        "showAnkiDialogToUpdateLastCard": "Show Anki dialog to update last card",
         "updateLastCard": "Update last card",
         "exportCard": "Export card"
     },
@@ -88,6 +89,8 @@
         "tagList": "Comma-separated list of strings",
         "title": "Anki Export",
         "updateLastCard": "Update Last Card",
+        "updateLastCardTarget": "Will update Anki note {{noteId}} ({{modelName}})",
+        "updateLastCardTargetFields": "Current non-empty fields",
         "url": "URL",
         "word": "Word",
         "zoomIn": "Zoom In",

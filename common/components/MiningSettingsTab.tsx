@@ -64,6 +64,22 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged }) => {
                     <LabelWithHoverEffect
                         control={
                             <Radio
+                                checked={clickToMineDefaultAction === PostMineAction.showAnkiDialogToUpdateLastCard}
+                                value={PostMineAction.showAnkiDialogToUpdateLastCard}
+                                onChange={(event) =>
+                                    event.target.checked &&
+                                    onSettingChanged(
+                                        'clickToMineDefaultAction',
+                                        PostMineAction.showAnkiDialogToUpdateLastCard
+                                    )
+                                }
+                            />
+                        }
+                        label={t('postMineAction.showAnkiDialogToUpdateLastCard')}
+                    />
+                    <LabelWithHoverEffect
+                        control={
+                            <Radio
                                 checked={clickToMineDefaultAction === PostMineAction.updateLastCard}
                                 value={PostMineAction.updateLastCard}
                                 onChange={(event) =>

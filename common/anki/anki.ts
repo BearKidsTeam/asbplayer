@@ -144,6 +144,7 @@ export interface ExportParams {
     tags: string[];
     mode: AnkiExportMode;
     ankiConnectUrl?: string;
+    updateLastNoteId?: number;
 }
 
 export async function exportCard(
@@ -396,6 +397,12 @@ export class Anki {
         ).flat();
     }
 
+    async latestCreatedNoteInfo(ankiConnectUrl?: string): Promise<NoteInfo | undefined> {
+        const noteId = await this._latestCreatedNoteId(ankiConnectUrl);
+        const noteInfo = await this.notesInfo([noteId], ankiConnectUrl);
+        return noteInfo.find((info) => info.noteId === noteId);
+    }
+
     async notesModTime(allNotes: number[], ankiConnectUrl?: string): Promise<{ noteId: number; mod: number }[]> {
         if (!allNotes.length) return [];
         return (
@@ -447,6 +454,7 @@ export class Anki {
         tags,
         mode,
         ankiConnectUrl,
+        updateLastNoteId,
     }: ExportParams) {
         const fields = {};
 
@@ -531,17 +539,9 @@ export class Anki {
             case 'gui':
                 return (await this._executeAction('guiAddCards', params, ankiConnectUrl)).result;
             case 'updateLast':
-                const recentNotes = (
-                    await this._executeAction('findNotes', { query: 'added:1' }, ankiConnectUrl)
-                ).result.sort();
-
-                if (recentNotes.length === 0) {
-                    throw new Error('Could not find note to update');
-                }
-
-                const lastNoteId = recentNotes[recentNotes.length - 1];
+                const lastNoteId = updateLastNoteId ?? (await this._latestCreatedNoteId(ankiConnectUrl));
                 params.note['id'] = lastNoteId;
-                const infoResponse = await this._executeAction('notesInfo', { notes: [lastNoteId] });
+                const infoResponse = await this._executeAction('notesInfo', { notes: [lastNoteId] }, ankiConnectUrl);
 
                 if (infoResponse.result.length > 0 && infoResponse.result[0].noteId === lastNoteId) {
                     const info = infoResponse.result[0];
@@ -580,6 +580,18 @@ export class Anki {
             default:
                 throw new Error('Unknown export mode: ' + mode);
         }
+    }
+
+    private async _latestCreatedNoteId(ankiConnectUrl?: string): Promise<number> {
+        const recentNotes = (await this._executeAction('findNotes', { query: 'added:1' }, ankiConnectUrl)).result.sort(
+            (a: number, b: number) => a - b
+        );
+
+        if (recentNotes.length === 0) {
+            throw new Error('Could not find note to update');
+        }
+
+        return recentNotes[recentNotes.length - 1];
     }
 
     private _appendField(fields: any, fieldName: string | undefined, value: string | undefined, multiline: boolean) {

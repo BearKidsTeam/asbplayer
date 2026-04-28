@@ -95,7 +95,17 @@ export default class AnkiUiController {
 
     async show(
         context: Binding,
-        { subtitle, surroundingSubtitles, image, audio, text, definition, word, customFieldValues }: ShowAnkiUiMessage
+        {
+            subtitle,
+            surroundingSubtitles,
+            image,
+            audio,
+            text,
+            definition,
+            word,
+            customFieldValues,
+            preferredExportMode,
+        }: ShowAnkiUiMessage
     ) {
         if (!this._settings) {
             throw new Error('Unable to show Anki UI because settings are missing.');
@@ -122,6 +132,7 @@ export default class AnkiUiController {
             definition,
             customFieldValues,
             inTutorial: this._inTutorial,
+            preferredExportMode,
             ...(await this._additionalUiState(context)),
         };
         client.updateState(state);

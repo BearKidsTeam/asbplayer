@@ -14,6 +14,7 @@ import {
     PostMinePlayback,
     ControlType,
     RichSubtitleModel,
+    AnkiExportMode,
 } from '@project/common';
 import {
     MiscSettings,
@@ -291,8 +292,9 @@ interface Props {
         subtitle: SubtitleModel,
         surroundingSubtitles: SubtitleModel[],
         cardTextFieldValues: CardTextFieldValues,
-        timestamp: number
-    ) => void;
+        timestamp: number,
+        preferredExportMode?: AnkiExportMode
+    ) => void | Promise<void>;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     onAnkiDialogRewind: () => void;
     onError: (error: string) => void;
@@ -1078,6 +1080,7 @@ export default function VideoPlayer({
         ) => {
             switch (postMineAction) {
                 case PostMineAction.showAnkiDialog:
+                case PostMineAction.showAnkiDialogToUpdateLastCard:
                     playerChannel.copy(
                         subtitle,
                         surroundingSubtitles,
@@ -1094,7 +1097,8 @@ export default function VideoPlayer({
                         subtitle,
                         surroundingSubtitles,
                         cardTextFieldValues,
-                        timestamp
+                        timestamp,
+                        postMineAction === PostMineAction.showAnkiDialogToUpdateLastCard ? 'updateLast' : undefined
                     );
 
                     if (playing()) {

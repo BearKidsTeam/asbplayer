@@ -65,7 +65,10 @@ export default class RecordMediaHandler {
         if (message.record) {
             const time = (subtitle.end - subtitle.start) / message.playbackRate + message.audioPaddingEnd;
 
-            if (message.postMineAction !== PostMineAction.showAnkiDialog) {
+            if (
+                message.postMineAction !== PostMineAction.showAnkiDialog &&
+                message.postMineAction !== PostMineAction.showAnkiDialogToUpdateLastCard
+            ) {
                 encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
             }
 

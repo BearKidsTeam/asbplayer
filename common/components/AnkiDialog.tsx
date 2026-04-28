@@ -18,6 +18,7 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import Grid from '@mui/material/Grid';
+import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import RestoreIcon from '@mui/icons-material/Restore';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -30,7 +31,7 @@ import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import DoneIcon from '@mui/icons-material/Done';
 import ListField from './ListField';
-import { Anki, ExportParams } from '../anki';
+import { Anki, ExportParams, NoteInfo } from '../anki';
 import { isFirefox } from '../browser-detection';
 import SentenceField from './SentenceField';
 import DefinitionField from './DefinitionField';
@@ -78,10 +79,41 @@ const useStyles = makeStyles<Theme>((theme) => ({
             color: theme.palette.text.primary,
         },
     },
+    updateLastPreview: {
+        marginBottom: theme.spacing(2),
+        '& .MuiAlert-message': {
+            width: '100%',
+        },
+    },
+    updateLastPreviewMeta: {
+        fontWeight: 600,
+    },
+    updateLastPreviewFields: {
+        marginTop: theme.spacing(1),
+        maxHeight: 180,
+        overflowY: 'auto',
+    },
+    updateLastPreviewField: {
+        display: 'flex',
+        gap: theme.spacing(1),
+        marginTop: theme.spacing(0.5),
+    },
+    updateLastPreviewFieldName: {
+        flex: '0 0 120px',
+        fontWeight: 600,
+        overflowWrap: 'break-word',
+    },
+    updateLastPreviewFieldValue: {
+        flexGrow: 1,
+        minWidth: 0,
+        overflowWrap: 'break-word',
+        color: theme.palette.text.secondary,
+    },
 }));
 
 const boundaryIntervalSubtitleCountRadius = 1;
 const boundaryIntervalSubtitleTimeRadius = 5000;
+const updateLastFieldPreviewMaxLength = 180;
 
 const boundaryIntervalFromCard = (subtitle: SubtitleModel, theSurroundingSubtitles: SubtitleModel[]) => {
     let index = theSurroundingSubtitles.findIndex((s) => s.start === subtitle.start);
@@ -139,6 +171,27 @@ const sliderMarksFromCard = (surroundingSubtitles: SubtitleModel[], boundary: nu
 
 const sliderValueLabelFormat = (ms: number) => {
     return humanReadableTime(ms, true);
+};
+
+const htmlToPlainText = (value: string) => {
+    if (typeof DOMParser === 'undefined') {
+        return value.replace(/<[^>]*>/g, ' ');
+    }
+
+    const parsedDocument = new DOMParser().parseFromString(value, 'text/html');
+    return parsedDocument.body.textContent ?? value;
+};
+
+const ankiFieldPreviewValue = (value: string) => {
+    const plainText = htmlToPlainText(value).replace(/\s+/g, ' ').trim();
+    const fallbackText = value.replace(/\s+/g, ' ').trim();
+    const preview = plainText || fallbackText;
+
+    if (preview.length <= updateLastFieldPreviewMaxLength) {
+        return preview;
+    }
+
+    return `${preview.substring(0, updateLastFieldPreviewMaxLength)}...`;
 };
 
 interface ValueLabelComponentProps {
@@ -207,6 +260,8 @@ interface AnkiDialogProps {
     showQuickSelectFtue?: boolean;
     onDismissShowQuickSelectFtue?: () => void;
     inTutorial?: boolean;
+    updateLastNote?: NoteInfo;
+    preferredExportMode?: AnkiExportMode;
 }
 
 const AnkiDialog = ({
@@ -235,6 +290,8 @@ const AnkiDialog = ({
     showQuickSelectFtue,
     onDismissShowQuickSelectFtue,
     inTutorial,
+    updateLastNote,
+    preferredExportMode,
 }: AnkiDialogProps) => {
     const classes = useStyles();
     const [definition, setDefinition] = useState<string>('');
@@ -642,8 +699,8 @@ const AnkiDialog = ({
     const updateLastButtonRef = useRef<HTMLButtonElement | null>(null);
     const openInAnkiButtonRef = useRef<HTMLButtonElement | null>(null);
     const exportButtonRef = useRef<HTMLButtonElement | null>(null);
-    const lastSelectedExportModeRef = useRef<AnkiExportMode>(undefined);
-    lastSelectedExportModeRef.current = lastSelectedExportMode;
+    const preferredExportModeRef = useRef<AnkiExportMode>(undefined);
+    preferredExportModeRef.current = preferredExportMode ?? lastSelectedExportMode;
     const [focusedAction, setFocusedAction] = useState<AnkiExportMode>();
 
     const focusedButton = () => {
@@ -663,7 +720,7 @@ const AnkiDialog = ({
     };
 
     const focusOnPreferredAction = useCallback(() => {
-        const preferredExportMode = lastSelectedExportModeRef.current;
+        const preferredExportMode = preferredExportModeRef.current;
 
         if (preferredExportMode === undefined) {
             return;
@@ -696,6 +753,7 @@ const AnkiDialog = ({
                 customFieldValues,
                 tags,
                 mode,
+                updateLastNoteId: mode === 'updateLast' ? updateLastNote?.noteId : undefined,
             });
         },
         [
@@ -711,6 +769,7 @@ const AnkiDialog = ({
             url,
             customFieldValues,
             tags,
+            updateLastNote,
             onProceed,
         ]
     );
@@ -737,6 +796,20 @@ const AnkiDialog = ({
     }, [focusOnPreferredAction]);
 
     const [tutorialStep, setTutorialStep] = useState<TutorialStep>(TutorialStep.dialog);
+    const updateLastFieldPreviews = useMemo(() => {
+        if (updateLastNote?.fields === undefined) {
+            return [];
+        }
+
+        return Object.entries(updateLastNote.fields)
+            .map(([name, field]) => ({
+                name,
+                order: field.order,
+                value: ankiFieldPreviewValue(field.value),
+            }))
+            .filter(({ value }) => value.length > 0)
+            .sort((a, b) => a.order - b.order);
+    }, [updateLastNote]);
 
     return (
         <>
@@ -789,6 +862,39 @@ const AnkiDialog = ({
                     )}
                 </Toolbar>
                 <DialogContent ref={dialogRefCallback}>
+                    {updateLastNote && (
+                        <Alert severity="info" className={classes.updateLastPreview}>
+                            <Typography variant="body2" className={classes.updateLastPreviewMeta}>
+                                {t('ankiDialog.updateLastCardTarget', {
+                                    noteId: updateLastNote.noteId,
+                                    modelName: updateLastNote.modelName,
+                                })}
+                            </Typography>
+                            {updateLastFieldPreviews.length > 0 && (
+                                <Box className={classes.updateLastPreviewFields}>
+                                    <Typography variant="caption">
+                                        {t('ankiDialog.updateLastCardTargetFields')}
+                                    </Typography>
+                                    {updateLastFieldPreviews.map(({ name, value }) => (
+                                        <Box key={name} className={classes.updateLastPreviewField}>
+                                            <Typography
+                                                variant="caption"
+                                                className={classes.updateLastPreviewFieldName}
+                                            >
+                                                {name}
+                                            </Typography>
+                                            <Typography
+                                                variant="caption"
+                                                className={classes.updateLastPreviewFieldValue}
+                                            >
+                                                {value}
+                                            </Typography>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            )}
+                        </Alert>
+                    )}
                     <form className={classes.root}>
                         {ankiFieldModels.map((model) => {
                             const key = model.custom ? `custom_${model.key}` : `standard_${model.key}`;

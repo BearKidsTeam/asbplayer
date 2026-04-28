@@ -114,7 +114,10 @@ export default class StartRecordingMediaHandler {
 
             let encodeAsMp3 = false;
 
-            if (startRecordingCommand.message.postMineAction !== PostMineAction.showAnkiDialog) {
+            if (
+                startRecordingCommand.message.postMineAction !== PostMineAction.showAnkiDialog &&
+                startRecordingCommand.message.postMineAction !== PostMineAction.showAnkiDialogToUpdateLastCard
+            ) {
                 encodeAsMp3 = await this._settings.getSingle('preferMp3');
             }
 

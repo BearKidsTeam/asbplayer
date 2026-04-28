@@ -45,6 +45,7 @@
     "postMineAction": {
         "none": "Не делать ничего",
         "showAnkiDialog": "Показать диалоговое окно Anki",
+        "showAnkiDialogToUpdateLastCard": "Show Anki dialog to update last card",
         "updateLastCard": "Обновить последнюю карточку",
         "exportCard": "Экспортировать карточку"
     },
@@ -88,6 +89,8 @@
         "tagList": "Список тегов, разделенных запятыми",
         "title": "Экспорт в Anki",
         "updateLastCard": "Обновить последнюю карточку",
+        "updateLastCardTarget": "Will update Anki note {{noteId}} ({{modelName}})",
+        "updateLastCardTargetFields": "Current non-empty fields",
         "url": "URL",
         "word": "Слово",
         "zoomIn": "Приблизить",

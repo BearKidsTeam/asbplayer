@@ -45,6 +45,7 @@
     "postMineAction": {
         "none": "何もしない",
         "showAnkiDialog": "Anki のエクスポートウィンドウを開く",
+        "showAnkiDialogToUpdateLastCard": "Show Anki dialog to update last card",
         "updateLastCard": "最後のカードを更新する",
         "exportCard": "カードをエクスポート"
     },
@@ -88,6 +89,8 @@
         "tagList": "テキストのリスト（カンマ「,」区切り）",
         "title": "Anki エクスポート",
         "updateLastCard": "最後のカードを更新する",
+        "updateLastCardTarget": "Will update Anki note {{noteId}} ({{modelName}})",
+        "updateLastCardTargetFields": "Current non-empty fields",
         "url": "URL",
         "word": "単語",
         "zoomIn": "ズームイン",
