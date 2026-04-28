@@ -260,8 +260,6 @@ interface AnkiDialogProps {
     showQuickSelectFtue?: boolean;
     onDismissShowQuickSelectFtue?: () => void;
     inTutorial?: boolean;
-    updateLastNote?: NoteInfo;
-    preferredExportMode?: AnkiExportMode;
 }
 
 const AnkiDialog = ({
@@ -290,8 +288,6 @@ const AnkiDialog = ({
     showQuickSelectFtue,
     onDismissShowQuickSelectFtue,
     inTutorial,
-    updateLastNote,
-    preferredExportMode,
 }: AnkiDialogProps) => {
     const classes = useStyles();
     const [definition, setDefinition] = useState<string>('');
@@ -317,6 +313,7 @@ const AnkiDialog = ({
     const [ankiIsAvailable, setAnkiIsAvailable] = useState<boolean>(true);
     const [imageDialogOpen, setImageDialogOpen] = useState<boolean>(false);
     const [image, setImage] = useState<Image>();
+    const [updateLastNote, setUpdateLastNote] = useState<NoteInfo>();
     const dialogRef = useRef<HTMLDivElement>(undefined);
     const dialogRefCallback = useCallback((element: HTMLDivElement) => {
         dialogRef.current = element;
@@ -699,8 +696,8 @@ const AnkiDialog = ({
     const updateLastButtonRef = useRef<HTMLButtonElement | null>(null);
     const openInAnkiButtonRef = useRef<HTMLButtonElement | null>(null);
     const exportButtonRef = useRef<HTMLButtonElement | null>(null);
-    const preferredExportModeRef = useRef<AnkiExportMode>(undefined);
-    preferredExportModeRef.current = preferredExportMode ?? lastSelectedExportMode;
+    const lastSelectedExportModeRef = useRef<AnkiExportMode>(undefined);
+    lastSelectedExportModeRef.current = lastSelectedExportMode;
     const [focusedAction, setFocusedAction] = useState<AnkiExportMode>();
 
     const focusedButton = () => {
@@ -720,7 +717,7 @@ const AnkiDialog = ({
     };
 
     const focusOnPreferredAction = useCallback(() => {
-        const preferredExportMode = preferredExportModeRef.current;
+        const preferredExportMode = lastSelectedExportModeRef.current;
 
         if (preferredExportMode === undefined) {
             return;
@@ -736,6 +733,32 @@ const AnkiDialog = ({
             focusOnPreferredAction();
         }
     }, [open, disabled, focusOnPreferredAction]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        if (!open) {
+            setUpdateLastNote(undefined);
+            return;
+        }
+
+        setUpdateLastNote(undefined);
+        anki.latestCreatedNoteInfo()
+            .then((note) => {
+                if (!cancelled) {
+                    setUpdateLastNote(note);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setUpdateLastNote(undefined);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [anki, card, open]);
 
     const handleProceed = useCallback(
         (mode: AnkiExportMode) => {
@@ -868,7 +891,8 @@ const AnkiDialog = ({
                                 {t('ankiDialog.updateLastCardTarget', {
                                     noteId: updateLastNote.noteId,
                                     modelName: updateLastNote.modelName,
-                                    defaultValue: 'Will update Anki note {{noteId}} ({{modelName}})',
+                                    defaultValue:
+                                        'If you choose Update Last Card, this will update Anki note {{noteId}} ({{modelName}})',
                                 })}
                             </Typography>
                             {updateLastFieldPreviews.length > 0 && (

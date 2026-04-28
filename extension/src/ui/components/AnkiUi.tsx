@@ -22,7 +22,6 @@ import {
     AnkiDialogDismissedQuickSelectFtueMessage,
     CardUpdatedDialogMessage,
     CardExportedDialogMessage,
-    AnkiExportMode,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
 import type { Profile } from '@project/common/settings';
@@ -35,7 +34,7 @@ import Bridge from '../bridge';
 import type { PaletteMode } from '@mui/material/styles';
 import { AnkiDialogState } from '@project/common/components/AnkiDialog';
 import { BridgeFetcher } from '../bridge-fetcher';
-import { Anki, ExportParams, NoteInfo } from '@project/common/anki';
+import { Anki, ExportParams } from '@project/common/anki';
 import { v4 as uuidv4 } from 'uuid';
 import { base64ToBlob, blobToBase64 } from '@project/common/base64';
 import { isMobile } from '@project/common/device-detection/mobile';
@@ -85,9 +84,6 @@ export default function AnkiUi({ bridge }: Props) {
     const [activeProfile, setActiveProfile] = useState<string>();
     const [ftueHasSeenAnkiDialogQuickSelect, setFtueHasSeenAnkiDialogQuickSelect] = useState<boolean>();
     const [inTutorial, setInTutorial] = useState<boolean>(false);
-    const [preferredExportMode, setPreferredExportMode] = useState<AnkiExportMode>();
-    const [updateLastNote, setUpdateLastNote] = useState<NoteInfo>();
-    const [updateLastNoteLoading, setUpdateLastNoteLoading] = useState<boolean>(false);
 
     const theme = useMemo(() => createTheme((settings?.themeType ?? 'dark') as PaletteMode), [settings?.themeType]);
     const anki = useMemo(
@@ -164,53 +160,8 @@ export default function AnkiUi({ bridge }: Props) {
             setOpen(s.open);
             setFtueHasSeenAnkiDialogQuickSelect(s.ftueHasSeenAnkiDialogQuickSelect);
             setInTutorial(s.inTutorial);
-            setPreferredExportMode(s.preferredExportMode);
-            setUpdateLastNote(undefined);
-            setUpdateLastNoteLoading(s.preferredExportMode === 'updateLast');
         });
     }, [bridge, image]);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        if (!open || !anki || preferredExportMode !== 'updateLast') {
-            setUpdateLastNote(undefined);
-            setUpdateLastNoteLoading(false);
-            return;
-        }
-
-        setUpdateLastNote(undefined);
-        setUpdateLastNoteLoading(true);
-        anki.latestCreatedNoteInfo(settings?.ankiConnectUrl)
-            .then((note) => {
-                if (!note) {
-                    throw new Error('Could not find note to update');
-                }
-
-                if (!cancelled) {
-                    setUpdateLastNote(note);
-                }
-            })
-            .catch((e) => {
-                if (cancelled) {
-                    return;
-                }
-
-                console.error(e);
-                setAlertSeverity('error');
-                setAlert(e instanceof Error ? e.message : String(e));
-                setAlertOpen(true);
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setUpdateLastNoteLoading(false);
-                }
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [anki, open, preferredExportMode, settings?.ankiConnectUrl]);
 
     useEffect(() => bridge.serverIsReady(), [bridge]);
 
@@ -415,7 +366,7 @@ export default function AnkiUi({ bridge }: Props) {
                 {settings && card && anki && (
                     <AnkiDialog
                         open={open}
-                        disabled={disabled || updateLastNoteLoading}
+                        disabled={disabled}
                         card={card}
                         settings={settings}
                         profiles={profiles}
@@ -438,8 +389,6 @@ export default function AnkiUi({ bridge }: Props) {
                         stateRef={dialogStateRef}
                         mp3Encoder={mp3Encoder}
                         lastSelectedExportMode={settings.lastSelectedAnkiExportMode}
-                        updateLastNote={updateLastNote}
-                        preferredExportMode={preferredExportMode}
                         inTutorial={inTutorial}
                     />
                 )}

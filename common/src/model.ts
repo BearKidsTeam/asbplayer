@@ -148,7 +148,6 @@ export interface AnkiUiState extends CardTextFieldValues {
     readonly file?: FileModel;
     readonly dialogRequestedTimestamp: number;
     readonly inTutorial: boolean;
-    readonly preferredExportMode?: AnkiExportMode;
 }
 
 export interface AnkiUiInitialState extends AnkiUiState {

@@ -7,7 +7,6 @@ import {
     NotifyErrorMessage,
     PostMineAction,
     ShowAnkiUiMessage,
-    AnkiExportMode,
 } from '@project/common';
 import { humanReadableTime } from '@project/common/util';
 import { AnkiSettings, ankiSettingsKeys, SettingsProvider } from '@project/common/settings';
@@ -35,7 +34,7 @@ export class CardPublisher {
             if (postMineAction == PostMineAction.showAnkiDialog) {
                 this._showAnkiDialog(card, id, src, tabId);
             } else if (postMineAction == PostMineAction.showAnkiDialogToUpdateLastCard) {
-                this._showAnkiDialog(card, id, src, tabId, 'updateLast');
+                this._showAnkiDialog(card, id, src, tabId);
             } else if (postMineAction == PostMineAction.updateLastCard) {
                 await this._updateLastCard(card, src, tabId);
             } else if (postMineAction === PostMineAction.exportCard) {
@@ -177,20 +176,13 @@ export class CardPublisher {
         browser.tabs.sendMessage(tabId, cardUpdatedCommand);
     }
 
-    private _showAnkiDialog(
-        card: CardModel,
-        id: string,
-        src: string | undefined,
-        tabId: number,
-        preferredExportMode?: AnkiExportMode
-    ) {
+    private _showAnkiDialog(card: CardModel, id: string, src: string | undefined, tabId: number) {
         const showAnkiUiCommand: ExtensionToVideoCommand<ShowAnkiUiMessage> = {
             sender: 'asbplayer-extension-to-video',
             message: {
                 ...card,
                 id,
                 command: 'show-anki-ui',
-                preferredExportMode,
             },
             src,
         };

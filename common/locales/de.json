@@ -45,7 +45,6 @@
     "postMineAction": {
         "none": "Keine",
         "showAnkiDialog": "Anki Dialog anzeigen",
-        "showAnkiDialogToUpdateLastCard": "Show Anki dialog to update last card",
         "updateLastCard": "Letzte Karte aktualisieren",
         "exportCard": "Karte exportieren"
     },
@@ -89,7 +88,7 @@
         "tagList": "Kommaseparierte Liste von Schlagwörtern",
         "title": "Anki Export",
         "updateLastCard": "Zuletzt erstellte Karte aktualisieren",
-        "updateLastCardTarget": "Will update Anki note {{noteId}} ({{modelName}})",
+        "updateLastCardTarget": "If you choose Update Last Card, this will update Anki note {{noteId}} ({{modelName}})",
         "updateLastCardTargetFields": "Current non-empty fields",
         "url": "URL",
         "word": "Wort",

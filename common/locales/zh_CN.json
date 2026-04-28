@@ -45,7 +45,6 @@
     "postMineAction": {
         "none": "无",
         "showAnkiDialog": "显示 Anki 对话框",
-        "showAnkiDialogToUpdateLastCard": "显示 Anki 对话框以更新上一张卡片",
         "updateLastCard": "更新上一张卡片",
         "exportCard": "导出卡片"
     },
@@ -89,7 +88,7 @@
         "tagList": "标签（以逗号分隔）",
         "title": "导出至 Anki",
         "updateLastCard": "更新上一张导出的卡片",
-        "updateLastCardTarget": "将更新 Anki 笔记 {{noteId}}（{{modelName}}）",
+        "updateLastCardTarget": "如果选择更新上一张卡片，将更新 Anki 笔记 {{noteId}}（{{modelName}}）",
         "updateLastCardTargetFields": "当前非空字段",
         "url": "链接",
         "word": "单词",

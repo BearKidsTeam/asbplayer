@@ -45,7 +45,6 @@
     "postMineAction": {
         "none": "Tidak Ada",
         "showAnkiDialog": "Tampilkan Dialog Anki",
-        "showAnkiDialogToUpdateLastCard": "Show Anki dialog to update last card",
         "updateLastCard": "Perbarui Kartu Terakhir",
         "exportCard": "Ekspor Kartu"
     },
@@ -89,7 +88,7 @@
         "tagList": "Daftar tag, pisahkan dengan koma",
         "title": "Ekspor ke Anki",
         "updateLastCard": "Perbarui Kartu Terakhir",
-        "updateLastCardTarget": "Will update Anki note {{noteId}} ({{modelName}})",
+        "updateLastCardTarget": "If you choose Update Last Card, this will update Anki note {{noteId}} ({{modelName}})",
         "updateLastCardTargetFields": "Current non-empty fields",
         "url": "URL",
         "word": "Kata",

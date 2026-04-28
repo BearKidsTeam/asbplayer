@@ -51,7 +51,10 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged }) => {
                     <LabelWithHoverEffect
                         control={
                             <Radio
-                                checked={clickToMineDefaultAction === PostMineAction.showAnkiDialog}
+                                checked={
+                                    clickToMineDefaultAction === PostMineAction.showAnkiDialog ||
+                                    clickToMineDefaultAction === PostMineAction.showAnkiDialogToUpdateLastCard
+                                }
                                 value={PostMineAction.showAnkiDialog}
                                 onChange={(event) =>
                                     event.target.checked &&
@@ -60,24 +63,6 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged }) => {
                             />
                         }
                         label={t('postMineAction.showAnkiDialog')}
-                    />
-                    <LabelWithHoverEffect
-                        control={
-                            <Radio
-                                checked={clickToMineDefaultAction === PostMineAction.showAnkiDialogToUpdateLastCard}
-                                value={PostMineAction.showAnkiDialogToUpdateLastCard}
-                                onChange={(event) =>
-                                    event.target.checked &&
-                                    onSettingChanged(
-                                        'clickToMineDefaultAction',
-                                        PostMineAction.showAnkiDialogToUpdateLastCard
-                                    )
-                                }
-                            />
-                        }
-                        label={t('postMineAction.showAnkiDialogToUpdateLastCard', {
-                            defaultValue: 'Show Anki dialog to update last card',
-                        })}
                     />
                     <LabelWithHoverEffect
                         control={

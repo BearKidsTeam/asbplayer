@@ -45,7 +45,6 @@
     "postMineAction": {
         "none": "Nic nie rób",
         "showAnkiDialog": "Pokaż okno dialogowe Anki",
-        "showAnkiDialogToUpdateLastCard": "Show Anki dialog to update last card",
         "updateLastCard": "Zaktualizuj ostatnią kartę",
         "exportCard": "Wyeksportuj kartę"
     },
@@ -89,7 +88,7 @@
         "tagList": "Lista ciągów znaków oddzielonych przecinkami",
         "title": "Eksport Anki",
         "updateLastCard": "Zaktualizuj ostatnią kartę",
-        "updateLastCardTarget": "Will update Anki note {{noteId}} ({{modelName}})",
+        "updateLastCardTarget": "If you choose Update Last Card, this will update Anki note {{noteId}} ({{modelName}})",
         "updateLastCardTargetFields": "Current non-empty fields",
         "url": "URL",
         "word": "Słowo",

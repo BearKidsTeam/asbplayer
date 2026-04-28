@@ -23,13 +23,12 @@ import {
     CardTextFieldValues,
     ImageErrorCode,
     RequestSubtitlesResponse,
-    AnkiExportMode,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
 import { AsbplayerSettings, Profile, SettingsProvider } from '@project/common/settings';
 import { humanReadableTime, download, extractText, timeDurationDisplay } from '@project/common/util';
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
-import { ExportParams, NoteInfo } from '@project/common/anki';
+import { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { v4 as uuidv4 } from 'uuid';
 import clsx from 'clsx';
@@ -212,8 +211,7 @@ interface RenderVideoProps {
         subtitle: SubtitleModel,
         surroundingSubtitles: SubtitleModel[],
         cardTextFieldValues: CardTextFieldValues,
-        timestamp: number,
-        preferredExportMode?: AnkiExportMode
+        timestamp: number
     ) => void | Promise<void>;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     onAnkiDialogRewind: () => void;
@@ -385,8 +383,6 @@ function App({
     const [ankiDialogOpen, setAnkiDialogOpen] = useState<boolean>(false);
     const [ankiDialogDisabled, setAnkiDialogDisabled] = useState<boolean>(false);
     const [ankiDialogCard, setAnkiDialogCard] = useState<CardModel>();
-    const [ankiDialogUpdateLastNote, setAnkiDialogUpdateLastNote] = useState<NoteInfo>();
-    const [ankiDialogPreferredExportMode, setAnkiDialogPreferredExportMode] = useState<AnkiExportMode>();
     const miningContext = useMemo(() => new MiningContext(), []);
     const [settingsDialogOpen, setSettingsDialogOpen] = useState<boolean>(false);
     const [settingsDialogScrollToId, setSettingsDialogScrollToId] = useState<string>();
@@ -452,19 +448,13 @@ function App({
     }, []);
 
     const handleAnkiDialogRequest = useCallback(
-        (
-            ankiDialogItem?: CopyHistoryItem | CardModel,
-            updateLastNote?: NoteInfo,
-            preferredExportMode?: AnkiExportMode
-        ) => {
+        (ankiDialogItem?: CopyHistoryItem | CardModel) => {
             if (!ankiDialogItem && copyHistoryItemsRef.current!.length === 0) {
                 return;
             }
 
             const item = ankiDialogItem ?? copyHistoryItemsRef.current[copyHistoryItemsRef.current.length - 1];
             setAnkiDialogCard(item);
-            setAnkiDialogUpdateLastNote(updateLastNote);
-            setAnkiDialogPreferredExportMode(preferredExportMode);
             setAnkiDialogOpen(true);
             setAnkiDialogDisabled(false);
             setDisableKeyEvents(true);
@@ -482,38 +472,26 @@ function App({
             subtitle: SubtitleModel,
             surroundingSubtitles: SubtitleModel[],
             cardTextFieldValues: CardTextFieldValues,
-            timestamp: number,
-            preferredExportMode?: AnkiExportMode
+            timestamp: number
         ) => {
-            try {
-                const item = {
-                    subtitle,
-                    surroundingSubtitles,
-                    ...cardTextFieldValues,
-                    timestamp: Date.now(),
-                    id: uuidv4(),
-                    subtitleFileName: videoFileName,
-                    mediaTimestamp: timestamp,
-                    file: {
-                        name: videoFileName,
-                        blobUrl: videoFileUrl,
-                        audioTrack,
-                        playbackRate,
-                    },
-                };
-                const updateLastNote =
-                    preferredExportMode === 'updateLast'
-                        ? await anki.latestCreatedNoteInfo(settings.ankiConnectUrl)
-                        : undefined;
-                if (preferredExportMode === 'updateLast' && !updateLastNote) {
-                    throw new Error('Could not find note to update');
-                }
-                handleAnkiDialogRequest(item, updateLastNote, preferredExportMode);
-            } catch (e) {
-                handleError(e);
-            }
+            const item = {
+                subtitle,
+                surroundingSubtitles,
+                ...cardTextFieldValues,
+                timestamp: Date.now(),
+                id: uuidv4(),
+                subtitleFileName: videoFileName,
+                mediaTimestamp: timestamp,
+                file: {
+                    name: videoFileName,
+                    blobUrl: videoFileUrl,
+                    audioTrack,
+                    playbackRate,
+                },
+            };
+            handleAnkiDialogRequest(item);
         },
-        [anki, handleAnkiDialogRequest, handleError, settings.ankiConnectUrl]
+        [handleAnkiDialogRequest]
     );
 
     const handleAnkiDialogProceed = useCallback(
@@ -535,8 +513,6 @@ function App({
                     }
 
                     setAnkiDialogOpen(false);
-                    setAnkiDialogUpdateLastNote(undefined);
-                    setAnkiDialogPreferredExportMode(undefined);
 
                     if (miningContext.mining) {
                         miningContext.stopped();
@@ -599,18 +575,8 @@ function App({
                     setAlertOpen(true);
                     break;
                 case PostMineAction.showAnkiDialog:
-                    handleAnkiDialogRequest(newCard);
-                    break;
                 case PostMineAction.showAnkiDialogToUpdateLastCard:
-                    try {
-                        const updateLastNote = await anki.latestCreatedNoteInfo(settingsRef.current.ankiConnectUrl);
-                        if (!updateLastNote) {
-                            throw new Error('Could not find note to update');
-                        }
-                        handleAnkiDialogRequest(newCard, updateLastNote, 'updateLast');
-                    } catch (e) {
-                        handleError(e);
-                    }
+                    handleAnkiDialogRequest(newCard);
                     break;
                 case PostMineAction.exportCard:
                 case PostMineAction.updateLastCard:
@@ -650,16 +616,7 @@ function App({
                     throw new Error('Unknown post mine action: ' + postMineAction);
             }
         },
-        [
-            anki,
-            extension,
-            miningContext,
-            saveCopyHistoryItem,
-            handleAnkiDialogProceed,
-            handleAnkiDialogRequest,
-            handleError,
-            t,
-        ]
+        [extension, miningContext, saveCopyHistoryItem, handleAnkiDialogProceed, handleAnkiDialogRequest, t]
     );
 
     const handleOpenCopyHistory = useCallback(async () => {
@@ -896,8 +853,6 @@ function App({
 
     const handleAnki = useCallback((card: CardModel) => {
         setAnkiDialogCard(card);
-        setAnkiDialogUpdateLastNote(undefined);
-        setAnkiDialogPreferredExportMode(undefined);
         setAnkiDialogOpen(true);
         setAnkiDialogDisabled(false);
         setDisableKeyEvents(true);
@@ -906,8 +861,6 @@ function App({
     const handleAnkiDialogCancel = useCallback(() => {
         setAnkiDialogOpen(false);
         setAnkiDialogDisabled(false);
-        setAnkiDialogUpdateLastNote(undefined);
-        setAnkiDialogPreferredExportMode(undefined);
         setDisableKeyEvents(false);
 
         if (miningContext.mining) {
@@ -1724,8 +1677,6 @@ function App({
                                     anki={anki}
                                     settings={settings}
                                     lastSelectedExportMode={lastSelectedAnkiExportMode}
-                                    updateLastNote={ankiDialogUpdateLastNote}
-                                    preferredExportMode={ankiDialogPreferredExportMode}
                                     onCancel={handleAnkiDialogCancel}
                                     onProceed={handleAnkiDialogProceed}
                                     onCopyToClipboard={handleCopyToClipboard}
@@ -1772,8 +1723,6 @@ function App({
                                     anki={anki}
                                     settings={settings}
                                     lastSelectedExportMode={lastSelectedAnkiExportMode}
-                                    updateLastNote={ankiDialogUpdateLastNote}
-                                    preferredExportMode={ankiDialogPreferredExportMode}
                                     onCancel={handleAnkiDialogCancel}
                                     onProceed={handleAnkiDialogProceed}
                                     onOpenSettings={handleOpenSettings}

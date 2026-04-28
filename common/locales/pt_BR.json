@@ -45,7 +45,6 @@
     "postMineAction": {
         "none": "Nada",
         "showAnkiDialog": "Mostrar caixa de diálogo do Anki",
-        "showAnkiDialogToUpdateLastCard": "Show Anki dialog to update last card",
         "updateLastCard": "Atualizar último card",
         "exportCard": "Exportar cartão"
     },
@@ -89,7 +88,7 @@
         "tagList": "Lista de strings separadas por vírgulas",
         "title": "Exportar para o Anki",
         "updateLastCard": "Atualizar último card",
-        "updateLastCardTarget": "Will update Anki note {{noteId}} ({{modelName}})",
+        "updateLastCardTarget": "If you choose Update Last Card, this will update Anki note {{noteId}} ({{modelName}})",
         "updateLastCardTargetFields": "Current non-empty fields",
         "url": "URL",
         "word": "Palavra",
