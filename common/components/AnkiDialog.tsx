@@ -868,12 +868,15 @@ const AnkiDialog = ({
                                 {t('ankiDialog.updateLastCardTarget', {
                                     noteId: updateLastNote.noteId,
                                     modelName: updateLastNote.modelName,
+                                    defaultValue: 'Will update Anki note {{noteId}} ({{modelName}})',
                                 })}
                             </Typography>
                             {updateLastFieldPreviews.length > 0 && (
                                 <Box className={classes.updateLastPreviewFields}>
                                     <Typography variant="caption">
-                                        {t('ankiDialog.updateLastCardTargetFields')}
+                                        {t('ankiDialog.updateLastCardTargetFields', {
+                                            defaultValue: 'Current non-empty fields',
+                                        })}
                                     </Typography>
                                     {updateLastFieldPreviews.map(({ name, value }) => (
                                         <Box key={name} className={classes.updateLastPreviewField}>

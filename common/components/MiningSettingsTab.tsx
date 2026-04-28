@@ -75,7 +75,9 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged }) => {
                                 }
                             />
                         }
-                        label={t('postMineAction.showAnkiDialogToUpdateLastCard')}
+                        label={t('postMineAction.showAnkiDialogToUpdateLastCard', {
+                            defaultValue: 'Show Anki dialog to update last card',
+                        })}
                     />
                     <LabelWithHoverEffect
                         control={
